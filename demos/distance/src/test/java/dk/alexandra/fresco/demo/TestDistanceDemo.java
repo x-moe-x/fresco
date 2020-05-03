@@ -2,6 +2,7 @@ package dk.alexandra.fresco.demo;
 
 import static org.junit.Assert.fail;
 
+import com.xmoexdev.fresco.framework.network.dummy.DummyNetwork;
 import com.xmoexdev.fresco.framework.network.logger.LoggerNetwork;
 import dk.alexandra.fresco.framework.ProtocolEvaluator;
 import dk.alexandra.fresco.framework.TestThreadRunner;
@@ -17,6 +18,7 @@ import dk.alexandra.fresco.framework.sce.evaluator.BatchedProtocolEvaluator;
 import dk.alexandra.fresco.framework.sce.evaluator.EvaluationStrategy;
 import dk.alexandra.fresco.framework.util.AesCtrDrbg;
 import dk.alexandra.fresco.framework.util.ModulusFinder;
+import dk.alexandra.fresco.framework.util.Pair;
 import dk.alexandra.fresco.suite.spdz.SpdzProtocolSuite;
 import dk.alexandra.fresco.suite.spdz.SpdzResourcePool;
 import dk.alexandra.fresco.suite.spdz.SpdzResourcePoolImpl;
@@ -27,6 +29,8 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,6 +44,9 @@ public class TestDistanceDemo {
         NetworkUtil.getNetworkConfigurations(ports);
     Map<Integer, TestThreadRunner.TestThreadConfiguration<SpdzResourcePool, ProtocolBuilderNumeric>> conf =
         new HashMap<>();
+
+    Map<Pair<Integer, Integer>, Queue<byte[]>> store = new HashMap<>();
+
     for (int playerId : netConf.keySet()) {
       SpdzProtocolSuite protocolSuite = new SpdzProtocolSuite(150);
 
@@ -50,7 +57,7 @@ public class TestDistanceDemo {
           new TestThreadRunner.TestThreadConfiguration<>(
               new SecureComputationEngineImpl<>(protocolSuite, evaluator),
               () -> createResourcePool(playerId, noOfParties),
-              () -> new LoggerNetwork(playerId, new SocketNetwork(netConf.get(playerId))));
+              () -> new LoggerNetwork(playerId, new DummyNetwork(store, playerId, noOfParties)));
       conf.put(playerId, ttc);
     }
     TestThreadRunner.run(f, conf);
