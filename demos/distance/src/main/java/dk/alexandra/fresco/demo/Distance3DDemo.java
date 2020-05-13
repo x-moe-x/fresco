@@ -17,8 +17,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A demo computing the 3 dimensional distance (center angle) between two points identified by latitude and longitude.
@@ -67,25 +65,33 @@ public class Distance3DDemo implements Application<BigDecimal, ProtocolBuilderNu
             DRes<SReal> cosLambdaB = (id == 2)
                     ? numericIo.input(Math.cos(lambda), 2) : numericIo.input(0.0, 2);
 
-            Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<List<DRes<SReal>>, List<DRes<SReal>>>>> inputs = new Pair<>(new Pair<>(sinThetaA, sinThetaB), new Pair<>(new Pair<>(cosThetaA, cosThetaB), new Pair<>(Arrays.asList(
-                    sinLambdaA, cosLambdaA), Arrays.asList(
-                    sinLambdaB, cosLambdaB
-            ))));
+            Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<DRes<SReal>, DRes<SReal>>>>> inputs =
+                    new Pair<>(
+                            new Pair<>(sinThetaA, sinThetaB),
+                            new Pair<>(
+                                    new Pair<>(cosThetaA, cosThetaB),
+                                    new Pair<>(
+                                            new Pair<>(sinLambdaA, sinLambdaB),
+                                            new Pair<>(cosLambdaA, cosLambdaB)
+                                    )));
 
             return () -> inputs;
         }).pairInPar(
                 // sin(thetaA) * sin(thetaB)
-                (seq, inputs) -> seq.realNumeric().mult(inputs.getFirst().getFirst(), inputs.getFirst().getSecond()),
-                (seq, inputs) -> seq.par(par -> inputs::getSecond).pairInPar(
+                (seq, sinThetaAndRest) -> seq.realNumeric().mult(sinThetaAndRest.getFirst().getFirst(), sinThetaAndRest.getFirst().getSecond()),
+                (seq, sinThetaAndRest) -> seq.par(par -> sinThetaAndRest::getSecond).pairInPar(
                         // cos(thetaA) * cos(thetaB)
-                        (seq2, inputSecond) -> seq2.realNumeric().mult(inputSecond.getFirst().getFirst(), inputSecond.getFirst().getSecond()),
-                        (seq2, inputSecond) -> seq2.par(par -> inputSecond::getSecond).pairInPar(
-                                (builder, inputSecond2) -> builder.realNumeric().mult(inputSecond2.getFirst().get(0), inputSecond2.getSecond().get(0)),
-                                (builder, inputSecond2) -> builder.realNumeric().mult(inputSecond2.getFirst().get(1), inputSecond2.getSecond().get(1))
-                        ).seq((seq3, input) -> seq3.realNumeric().add(input.getFirst(), input.getSecond()))
+                        (seq2, cosThetaAndRest) -> seq2.realNumeric().mult(cosThetaAndRest.getFirst().getFirst(), cosThetaAndRest.getFirst().getSecond()),
+                        // cos(lambdaB - lambdaA) (rewritten to operate on precomputed sin and cos values only)
+                        (seq2, cosThetaAndRest) -> seq2.par(par -> cosThetaAndRest::getSecond).pairInPar(
+                                // sin(lambdaA) * cos(lambdaA)
+                                (seq3, sinCosLambda) -> seq3.realNumeric().mult(sinCosLambda.getFirst().getFirst(), sinCosLambda.getFirst().getSecond()),
+                                // sin(lambdaB) * cos(lambdaB)
+                                (seq3, sinCosLambda) -> seq3.realNumeric().mult(sinCosLambda.getSecond().getFirst(), sinCosLambda.getSecond().getSecond())
+                        ).seq((seq3, summands) -> seq3.realNumeric().add(summands.getFirst(), summands.getSecond()))
                 ).seq((seq2, factors) -> seq2.realNumeric().mult(factors.getFirst(), factors.getSecond()))
-        ).seq((seq, input) -> seq.realNumeric().add(input.getFirst(), input.getSecond()))
-                .seq((seq, input) -> seq.realNumeric().open(input));
+        ).seq((seq, summands) -> seq.realNumeric().add(summands.getFirst(), summands.getSecond()))
+                .seq((seq, cosCenterAngle) -> seq.realNumeric().open(cosCenterAngle));
     }
 
     /**
