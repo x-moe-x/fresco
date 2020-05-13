@@ -2,7 +2,6 @@ package dk.alexandra.fresco.demo;
 
 import static org.junit.Assert.fail;
 
-import com.xmoexdev.fresco.framework.network.logger.LoggerNetwork;
 import dk.alexandra.fresco.framework.ProtocolEvaluator;
 import dk.alexandra.fresco.framework.TestThreadRunner;
 import dk.alexandra.fresco.framework.TestThreadRunner.TestThread;
@@ -51,7 +50,7 @@ public class TestDistanceDemo {
           new TestThreadRunner.TestThreadConfiguration<>(
               new SecureComputationEngineImpl<>(protocolSuite, evaluator),
               () -> createResourcePool(playerId, noOfParties),
-              () -> new LoggerNetwork(playerId, new SocketNetwork(netConf.get(playerId))));
+              () -> new SocketNetwork(netConf.get(playerId)));
       conf.put(playerId, ttc);
     }
     TestThreadRunner.run(f, conf);
