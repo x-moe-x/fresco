@@ -67,28 +67,27 @@ public class Distance3DDemo implements Application<BigDecimal, ProtocolBuilderNu
             DRes<SReal> cosLambdaB = (id == 2)
                     ? numericIo.input(Math.cos(lambda), 2) : numericIo.input(0.0, 2);
 
-            Pair<List<DRes<SReal>>, List<DRes<SReal>>> inputs = new Pair<>(Arrays.asList(
-                    sinThetaA, cosThetaA, sinLambdaA, cosLambdaA), Arrays.asList(
-                    sinThetaB, cosThetaB, sinLambdaB, cosLambdaB
-            ));
+            Pair<Pair<DRes<SReal>, DRes<SReal>>, Pair<List<DRes<SReal>>, List<DRes<SReal>>>> inputs = new Pair<>(new Pair<>(sinThetaA, sinThetaB), new Pair<>(Arrays.asList(
+                    cosThetaA, sinLambdaA, cosLambdaA), Arrays.asList(
+                    cosThetaB, sinLambdaB, cosLambdaB
+            )));
+
             return () -> inputs;
         }).pairInPar(
                 // sin(thetaA) * sin(thetaB)
-                (seq, input) -> seq.realNumeric().mult(input.getFirst().get(0), input.getSecond().get(0)),
-                (seq, input) -> {
-                    RealNumeric numeric = seq.realNumeric();
-                    // rewritten form of cos(lambdaB - lambdaA)
-                    DRes<SReal> cosDeltaLambda = numeric.add(
-                            numeric.mult(input.getFirst().get(2), input.getSecond().get(2)),
-                            numeric.mult(input.getFirst().get(3), input.getSecond().get(3))
-                    );
-
-                    return numeric.mult(
-                            // cos(thetaA) * cos(thetaB)
-                            numeric.mult(input.getFirst().get(1), input.getSecond().get(1)),
-                            cosDeltaLambda
-                    );
-                }
+                (seq, inputs) -> seq.realNumeric().mult(inputs.getFirst().getFirst(), inputs.getFirst().getSecond()),
+                (seq, inputs) -> seq.par(par -> inputs::getSecond).pairInPar(
+                        // cos(thetaA) * cos(thetaB)
+                        (seq2, inputSecond) -> seq2.realNumeric().mult(inputSecond.getFirst().get(0), inputSecond.getSecond().get(0)),
+                        (seq2, inputSecond) -> {
+                            RealNumeric numeric = seq2.realNumeric();
+                            // rewritten form of cos(lambdaB - lambdaA)
+                            return numeric.add(
+                                    numeric.mult(inputSecond.getFirst().get(1), inputSecond.getSecond().get(1)),
+                                    numeric.mult(inputSecond.getFirst().get(2), inputSecond.getSecond().get(2))
+                            );
+                        }
+                ).seq((seq2, factors) -> seq2.realNumeric().mult(factors.getFirst(), factors.getSecond()))
         ).seq((seq, input) -> seq.realNumeric().add(input.getFirst(), input.getSecond()))
                 .seq((seq, input) -> seq.realNumeric().open(input));
     }
