@@ -25,6 +25,7 @@ import dk.alexandra.fresco.suite.spdz.SpdzResourcePoolImpl;
 import dk.alexandra.fresco.suite.spdz.storage.SpdzDummyDataSupplier;
 import dk.alexandra.fresco.suite.spdz.storage.SpdzOpenedValueStoreImpl;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
@@ -100,6 +101,39 @@ public class TestDistanceDemo {
         };
     runTest(f, EvaluationStrategy.SEQUENTIAL_BATCHED, 2);
   }
+
+    @Test
+    public void testDistance3D() {
+        final TestThreadFactory<SpdzResourcePool, ProtocolBuilderNumeric> f =
+                new TestThreadFactory<SpdzResourcePool, ProtocolBuilderNumeric>() {
+                    @Override
+                    public TestThread<SpdzResourcePool, ProtocolBuilderNumeric> next() {
+                        return new TestThread<SpdzResourcePool, ProtocolBuilderNumeric>() {
+                            @Override
+                            public void test() throws Exception {
+                                double theta, lambda;
+                                final double toRad = Math.PI / 180.0;
+                                if (conf.getMyId() == 1) {
+                                    // Berlin
+                                    theta = 52.517 * toRad;
+                                    lambda = 13.40 * toRad;
+                                } else {
+                                    // Tokyo
+                                    theta = 35.70 * toRad;
+                                    lambda = 139.767 * toRad;
+                                }
+                                System.out.println("Running with x: " + theta + ", y: " + lambda);
+                                Distance3DDemo distDemo = new Distance3DDemo(conf.getMyId(), theta, lambda);
+                                BigDecimal bigDecimal = runApplication(distDemo);
+                                double centerAngle = bigDecimal.doubleValue();
+                                centerAngle = Math.acos(centerAngle);
+                                Assert.assertEquals(1.4000, centerAngle, 0.0001);
+                            }
+                        };
+                    }
+                };
+        runTest(f, EvaluationStrategy.SEQUENTIAL_BATCHED, 2);
+    }
 
   @Test
   public void testDistanceFromCmdLine() throws Exception {
